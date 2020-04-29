@@ -146,8 +146,9 @@ if (X11_FOUND)
   endif ()
 endif()
 
-# Coin is typically installed as Inventor.framework on APPLE
-find_package(Coin NAMES Inventor Coin REQUIRED)
+find_package(Coin REQUIRED)
+
+set(SO${GUI}_PKG_DEPS "Coin Motif X11 OpenGL")
 
 # ##########################################################################
 # Setup build environment
@@ -197,6 +198,7 @@ if(WIN32)
   set(CMAKE_MINSIZEREL_POSTFIX ${SO${GUI}_DEFAULT_POSTFIX})
   set(CMAKE_RELWITHDEBINFO_POSTFIX ${SO${GUI}_DEFAULT_POSTFIX})
   set(CMAKE_DEBUG_POSTFIX ${SO${GUI}_DEFAULT_POSTFIX}d)
+  set(SO${GUI}_PKG_LIBS "-l${PROJECT_NAME}")
 elseif(APPLE)
   if(POLICY CMP0042)
     # get rid of MACOSX_RPATH warning on Mac OS X from CMake 3.12.2
@@ -217,25 +219,32 @@ elseif(APPLE)
   configure_file(${CMAKE_SOURCE_DIR}/version.plist.in ${CMAKE_BINARY_DIR}/version.plist)
   set(HAVE_GZDOPEN)
 
-  set(SO${GUI}_MAC_FRAMEWORK ${SO${GUI}_BUILD_MAC_FRAMEWORK})
-  set(SO${GUI}_MAC_FRAMEWORK_NAME "SoXt")
-  set(SO${GUI}_MAC_FRAMEWORK_PREFIX "${CMAKE_INSTALL_PREFIX}")
-  set(SO${GUI}_MAC_FRAMEWORK_VERSION "A") # SoXt2 will be "B", to allow parallel installations of SoXt1
-  set(PACKAGING_FRAMEWORK_NAME "${SO${GUI}_MAC_FRAMEWORK_NAME}")
+  #get rid of all warning related to OpenGL deprecation
+  add_definitions(-DGL_SILENCE_DEPRECATION)
 
-  # package config *.pc entries
-  set(frameworkdir "${SO${GUI}_MAC_FRAMEWORK_PREFIX}/${SO${GUI}_MAC_FRAMEWORK_NAME}.framework")
-  set(includedir "${frameworkdir}/Versions/${SO${GUI}_MAC_FRAMEWORK_VERSION}/Resources/include")
-  set(ivincludedir "${includedir}")
-  set(SO${GUI}_EXTRA_CPPFLAGS "-F${SO${GUI}_MAC_FRAMEWORK_PREFIX}")
-  set(SO${GUI}_EXTRA_FP_LDFLAGS "-Wl,-F${SO${GUI}_MAC_FRAMEWORK_PREFIX}")
-  set(SO${GUI}_EXTRA_LDFLAGS "${SO${GUI}_EXTRA_FP_LDFLAGS} -Wl,-framework,${SO${GUI}_MAC_FRAMEWORK_NAME} -Wl,-framework,Inventor -Wl,-framework,OpenGL")
+  if(SO${GUI}_BUILD_MAC_FRAMEWORK)
+    set(SO${GUI}_MAC_FRAMEWORK ${SO${GUI}_BUILD_MAC_FRAMEWORK})
+    set(SO${GUI}_MAC_FRAMEWORK_NAME "SoXt")
+    set(SO${GUI}_MAC_FRAMEWORK_PREFIX "${CMAKE_INSTALL_PREFIX}")
+    set(SO${GUI}_MAC_FRAMEWORK_VERSION "A") # SoXt2 will be "B", to allow parallel installations of SoXt1
+    set(PACKAGING_FRAMEWORK_NAME "${SO${GUI}_MAC_FRAMEWORK_NAME}")
+
+    # package config *.pc entries
+    set(frameworkdir "${SO${GUI}_MAC_FRAMEWORK_PREFIX}/${SO${GUI}_MAC_FRAMEWORK_NAME}.framework")
+    set(includedir "${frameworkdir}/Versions/${SO${GUI}_MAC_FRAMEWORK_VERSION}/Resources/include")
+    set(ivincludedir "${includedir}")
+    set(SO${GUI}_PKG_FLAGS "-F${SO${GUI}_MAC_FRAMEWORK_PREFIX}")
+    set(SO${GUI}_PKG_LIBS "-Wl,-F${SO${GUI}_MAC_FRAMEWORK_PREFIX} -Wl,-framework,${SO${GUI}_MAC_FRAMEWORK_NAME} -Wl,-framework,Inventor -Wl,-framework,OpenGL")
+  else()
+    set(SO${GUI}_PKG_LIBS "-l${PROJECT_NAME} -Wl,-framework,OpenGL")
+  endif()
 
   # Let's enable all OS X specific code
   set(SO${GUI}_MACOSX_FRAMEWORK ${SO${GUI}_BUILD_MAC_FRAMEWORK})
   set(SO${GUI}_MACOS_10 1)
   set(SO${GUI}_MACOS_10_3 1)
 else()
+  set(SO${GUI}_PKG_LIBS "-l${PROJECT_NAME}")
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
